@@ -74,3 +74,7 @@ The graph, LATCH approval/persistence adaptation, visual polish and final demo r
 
 ## Final full-scope build check
 Production build PASS after restoring the CopilotKit required runtime URL. Only inherited Google Vertex dynamic-dependency warning remains. Offline production workspace screenshot: docs/screenshots/workspace-offline.png. No model output is shown or claimed. Initial build failure from an omitted runtimeUrl was corrected before this successful build.
+
+## Credential-configured live attempt
+All three environment settings are present. Live extraction attempted but did not pass. A minimal direct OpenAI request returned HTTP 429, code credit_balance_exhausted, type insufficient_quota. No successful live extraction or saved record is claimed. Fixed the checker's top-level await incompatibility by using an async main function; npm.cmd run typecheck passed. Resume live checker after API billing is funded.
+

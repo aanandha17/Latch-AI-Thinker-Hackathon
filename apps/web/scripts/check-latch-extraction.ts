@@ -12,6 +12,7 @@ async function extract(thread: LatchThread) {
   if (!response.ok) throw new Error(`Extraction HTTP ${response.status}. Configure local credentials and inspect the safe page error.`);
   return validateExtraction(await response.json(), thread);
 }
+async function main() {
 try {
   const first = await extract(latchDemo);
   assert.equal(first.commitments.length, 4);
@@ -46,3 +47,6 @@ try {
   console.error("Live extraction check failed. Ensure the local app is running with valid MODEL and OPENAI_API_KEY; review the safe page error or fixture assertions locally.");
   process.exitCode = 1;
 }
+
+}
+void main();
