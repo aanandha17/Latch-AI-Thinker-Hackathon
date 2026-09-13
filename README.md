@@ -32,6 +32,8 @@ By default, extraction and the CopilotKit assistant both follow
 `MODEL_PROVIDER` and `MODEL`. Extraction and
 review never create an external record; only **Approve & save to Ambiguous**
 writes, and the app immediately reads the same provider record back.
+Free OpenRouter extraction can take up to about 90 seconds when its shared
+models are busy.
 
 ### Demo flow
 

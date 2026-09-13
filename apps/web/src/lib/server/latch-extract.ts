@@ -10,6 +10,8 @@ import { validateAndNormalizeExtraction } from "../latch-validate";
 
 export type LatchExtractionRunner = (thread: LatchThread) => Promise<unknown>;
 
+const LATCH_EXTRACTION_TIMEOUT_MS = 90_000;
+
 export class LatchExtractionConfigurationError extends Error {
   constructor(message: string) {
     super(message);
@@ -102,7 +104,8 @@ export async function runLatchExtractionAgent(thread: LatchThread) {
     }),
     {
       maxTurns: 2,
-      signal: AbortSignal.timeout(25_000),
+      // Free shared OpenRouter models can have a longer queue than paid models.
+      signal: AbortSignal.timeout(LATCH_EXTRACTION_TIMEOUT_MS),
     },
   );
   if (!result.finalOutput) throw new Error("The extraction agent returned no output.");

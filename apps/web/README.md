@@ -28,7 +28,7 @@ MODEL=openrouter/free
 AMBIGUOUS_API_KEY=your-workspace-key
 ```
 
-Free OpenRouter models may be rate-limited or temporarily unavailable. Use a demo workspace you control for the first write. This web template needs no managed Channel, Intelligence account, or OpenAI key.
+Free OpenRouter models may be rate-limited, temporarily unavailable, or take up to about 90 seconds for structured extraction. Use a demo workspace you control for the first write. This web template needs no managed Channel, Intelligence account, or OpenAI key.
 
 For CopilotKit onboarding, use the [official prompt](../../README.md#onboarding-prompt).
 
