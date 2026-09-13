@@ -1,39 +1,46 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState, type FormEvent } from "react";
 import {
   CopilotChat,
   useConfigureSuggestions,
 } from "@copilotkit/react-core/v2";
 import { GenerativeUI } from "@/components/generative-ui";
 import { AppControl } from "@/components/app-control";
-import { findIncident, incidents, workspaceContext } from "@/lib/incidents";
 import { useWorkplace } from "@/lib/use-workplace";
 import { WorkplaceFollowups } from "@/components/workplace-followups";
+import {
+  createLocalMessage,
+  latchAuthors,
+  latchDemoThread,
+  type LatchAuthor,
+  type LatchMessage,
+} from "@/lib/latch-demo";
+
+const inheritedIncidentId = "INC-1042";
 
 export default function Home() {
-  const [selectedId, setSelectedId] = useState<string>(incidents[0].id);
-  const workplace = useWorkplace(selectedId);
-  const { selectedIncident: incident } = workspaceContext(
-    selectedId,
-    workplace.status?.status === "connected" ? workplace.status.tasks : [],
-  );
-  const selectIncident = useCallback((id: string) => {
-    setSelectedId(findIncident(id).id);
-  }, []);
+  const [messages, setMessages] = useState<LatchMessage[]>(() => [
+    ...latchDemoThread.messages,
+  ]);
+  const [revision, setRevision] = useState(latchDemoThread.revision);
+  const [author, setAuthor] = useState<LatchAuthor>(latchAuthors[0]);
+  const [draft, setDraft] = useState("");
+  const [extractionNotice, setExtractionNotice] = useState("");
+  const workplace = useWorkplace(inheritedIncidentId);
 
   useConfigureSuggestions(
     {
       suggestions: [
         {
-          title: "Summarize this incident",
+          title: "Find commitments",
           message:
-            "Summarize the selected incident using the page context. What needs attention?",
+            "Identify the commitments and suggestions in the selected team conversation.",
         },
         {
-          title: "Propose a follow-up",
+          title: "Explain a dependency",
           message:
-            "Prepare one useful Ambiguous follow-up for the selected incident. Show me the proposal before it is saved.",
+            "Who is waiting on whom in this team conversation, and what evidence supports it?",
         },
       ],
       available: "before-first-message",
@@ -41,100 +48,209 @@ export default function Home() {
     [],
   );
 
+  function addMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!draft.trim()) return;
+
+    setMessages((current) => [
+      ...current,
+      createLocalMessage(current, author, draft),
+    ]);
+    setRevision((current) => current + 1);
+    setDraft("");
+    setExtractionNotice("");
+  }
+
+  function resetSample() {
+    setMessages([...latchDemoThread.messages]);
+    setRevision(latchDemoThread.revision);
+    setDraft("");
+    setExtractionNotice("");
+  }
+
   return (
     <>
       <GenerativeUI />
       <AppControl
-        selectedId={selectedId}
-        selectIncident={selectIncident}
+        selectedId={inheritedIncidentId}
+        selectIncident={() => undefined}
         workplace={workplace}
       />
-      <main className="ck-workspace">
-        <header className="ck-workspace-header">
+      <main className="latch-workspace">
+        <header className="latch-header">
           <div>
-            <p className="ck-eyebrow">Agents, everywhere · Web example</p>
-            <h1>Incident assistant</h1>
-            <p className="ck-intro">
-              Pick an incident. Ask your assistant. Review a follow-up.
+            <p className="latch-eyebrow">LATCH / Commitment Graph</p>
+            <h1>Catch the promises work forgets.</h1>
+            <p className="latch-intro">
+              Turn a busy team conversation into reviewable commitments,
+              evidence, and dependencies.
             </p>
           </div>
-          <span className="ck-tag">Sample data</span>
+          <span className="latch-sample-tag">Sample data</span>
         </header>
 
-        <div className="ck-workspace-grid">
-          <section className="ck-panel" aria-labelledby="incident-title">
-            <div className="ck-incident-picker">
-              <label htmlFor="incident-select">Incident</label>
-              <select
-                id="incident-select"
-                value={selectedId}
-                onChange={(event) => selectIncident(event.target.value)}
-              >
-                {incidents.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.id} · {item.service}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="latch-primary-grid">
+          <section className="latch-panel" aria-labelledby="thread-title">
+            <header className="latch-panel-header">
+              <div>
+                <p className="latch-kicker">Sample team workspace</p>
+                <h2 id="thread-title">Launch-day coordination</h2>
+                <p className="latch-metadata">
+                  <code>{latchDemoThread.threadId}</code>
+                  <span aria-hidden="true">·</span>
+                  <time dateTime={latchDemoThread.date}>
+                    {latchDemoThread.date}
+                  </time>
+                  <span aria-hidden="true">·</span>
+                  <span>{latchDemoThread.timezone}</span>
+                </p>
+              </div>
+              <span className="latch-revision">Revision {revision}</span>
+            </header>
 
-            <div className="ck-detail">
-              <span className="ck-status-label">{incident.status}</span>
-              <h2 id="incident-title">{incident.title}</h2>
-              <p>{incident.summary}</p>
-              <details className="ck-more" key={incident.id}>
-                <summary>Details &amp; timeline</summary>
-                <dl className="ck-detail-facts">
-                  <div>
-                    <dt>Incident lead</dt>
-                    <dd>{incident.owner}</dd>
+            <ol className="latch-message-list" aria-label="Team messages">
+              {messages.map((message) => (
+                <li className="latch-message" key={message.id}>
+                  <div
+                    className="latch-avatar"
+                    aria-hidden="true"
+                    data-author={message.author}
+                  >
+                    {message.author.charAt(0)}
                   </div>
-                  <div>
-                    <dt>Severity</dt>
-                    <dd>{incident.severity}</dd>
+                  <div className="latch-message-body">
+                    <div className="latch-message-meta">
+                      <strong>{message.author}</strong>
+                      <time>{message.time}</time>
+                      <code>{message.id}</code>
+                      {message.source === "local" && (
+                        <span className="latch-local-badge">Local demo</span>
+                      )}
+                    </div>
+                    <p>{message.text}</p>
                   </div>
-                  <div>
-                    <dt>Last update</dt>
-                    <dd>{incident.updated}</dd>
-                  </div>
-                </dl>
-                <h3>Impact</h3>
-                <p>{incident.impact}</p>
-                <h3>Timeline</h3>
-                <ol className="ck-timeline">
-                  {incident.timeline.map((event) => (
-                    <li key={event.time}>
-                      <time>{event.time} UTC</time>
-                      <div>
-                        <strong>{event.author}</strong>
-                        <p>{event.detail}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </details>
-            </div>
+                </li>
+              ))}
+            </ol>
 
-            <WorkplaceFollowups incidentId={selectedId} workplace={workplace} />
+            <form className="latch-composer" onSubmit={addMessage}>
+              <div className="latch-composer-fields">
+                <label>
+                  <span>Author</span>
+                  <select
+                    value={author}
+                    onChange={(event) =>
+                      setAuthor(event.target.value as LatchAuthor)
+                    }
+                  >
+                    {latchAuthors.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="latch-message-input">
+                  <span>Local demo message</span>
+                  <input
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    placeholder="Add a message to this sample thread"
+                    maxLength={2000}
+                    required
+                  />
+                </label>
+              </div>
+              <div className="latch-composer-actions">
+                <button className="latch-button latch-button-primary" type="submit">
+                  Add message
+                </button>
+                <button
+                  className="latch-button latch-button-secondary"
+                  type="button"
+                  onClick={resetSample}
+                >
+                  Reset sample
+                </button>
+              </div>
+            </form>
           </section>
 
           <section
-            className="ck-panel ck-assistant"
-            aria-labelledby="assistant-title"
+            className="latch-panel latch-results-panel"
+            aria-labelledby="results-title"
           >
-            <header className="ck-assistant-header">
-              <h2 id="assistant-title">Ask assistant</h2>
-              <p>It can read this incident and prepare follow-ups.</p>
+            <header className="latch-panel-header">
+              <div>
+                <p className="latch-kicker">Commitment Graph</p>
+                <h2 id="results-title">Detected work</h2>
+              </div>
+              <span className="latch-status-dot">Not analyzed</span>
             </header>
-            <CopilotChat
-              className="ck-chat"
-              labels={{
-                welcomeMessageText: "What needs attention?",
-                chatInputPlaceholder: "Ask about this incident…",
-              }}
-            />
+
+            <div className="latch-empty-results">
+              <div className="latch-empty-icon" aria-hidden="true">
+                ↗
+              </div>
+              <h3>No commitments extracted yet</h3>
+              <p>
+                The validated extraction service will populate commitments,
+                suggestions, evidence, and dependency arrows here.
+              </p>
+            </div>
+
+            <button
+              className="latch-button latch-button-primary latch-catch-button"
+              type="button"
+              onClick={() =>
+                setExtractionNotice(
+                  "Extraction is not connected in this UI milestone. No result or external task was created.",
+                )
+              }
+            >
+              Catch commitments
+            </button>
+            <p className="latch-results-note" role="status">
+              {extractionNotice ||
+                "This control does not save anything to Ambiguous."}
+            </p>
           </section>
         </div>
+
+        <section className="latch-inherited" aria-labelledby="inherited-title">
+          <header className="latch-inherited-header">
+            <div>
+              <p className="latch-kicker">Inherited starter integration</p>
+              <h2 id="inherited-title">Approval and assistant sandbox</h2>
+            </div>
+            <p>
+              Retained temporarily while Members 2 and 3 migrate the typed
+              extraction and approval flows to LATCH.
+            </p>
+          </header>
+          <div className="latch-inherited-grid">
+            <section className="latch-panel">
+              <WorkplaceFollowups
+                incidentId={inheritedIncidentId}
+                workplace={workplace}
+              />
+            </section>
+            <section className="ck-panel ck-assistant" aria-label="Assistant">
+              <header className="ck-assistant-header">
+                <h2>Ask assistant</h2>
+                <p>Current starter chat, pending LATCH context integration.</p>
+              </header>
+              <CopilotChat
+                className="ck-chat"
+                labels={{
+                  welcomeMessageText:
+                    "The LATCH conversation UI is ready for extraction integration.",
+                  chatInputPlaceholder: "Ask about the workspace…",
+                }}
+              />
+            </section>
+          </div>
+        </section>
       </main>
     </>
   );

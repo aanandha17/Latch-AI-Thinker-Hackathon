@@ -1,11 +1,14 @@
 /* Calm defaults shared by the web example, voice page, and agent cards. */
 :root {
-  --ground: #ededf5;
-  --surface: #fff;
-  --border: #dbdbe5;
-  --text: #010507;
-  --muted: #57575b;
-  --accent: #010507;
+  --ground: #f3f5f2;
+  --surface: #ffffff;
+  --border: #d9dfdb;
+  --text: #14231f;
+  --muted: #61706b;
+  --accent: #117a6b;
+  --accent-dark: #0b5b50;
+  --accent-soft: #e7f4f0;
+  --warm: #f7efe2;
   color-scheme: light;
 }
 * {
@@ -46,6 +49,294 @@ h2,
 h3,
 p {
   margin-top: 0;
+}
+
+/* LATCH conversation workspace */
+.latch-workspace {
+  width: min(1380px, 100%);
+  margin: 0 auto;
+  padding: 38px 32px 64px;
+}
+.latch-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 26px;
+}
+.latch-eyebrow,
+.latch-kicker {
+  margin: 0 0 8px;
+  color: var(--accent-dark);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.latch-header h1 {
+  margin: 0;
+  max-width: 760px;
+  font-size: clamp(32px, 5vw, 54px);
+  font-weight: 650;
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+}
+.latch-intro {
+  max-width: 720px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+.latch-sample-tag,
+.latch-revision,
+.latch-status-dot,
+.latch-local-badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.latch-sample-tag {
+  padding: 7px 12px;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border: 1px solid #bfdfd6;
+}
+.latch-primary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(340px, 2fr);
+  gap: 20px;
+  align-items: stretch;
+}
+.latch-panel {
+  min-width: 0;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 16px 50px rgb(24 53 45 / 5%);
+}
+.latch-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+.latch-panel-header h2,
+.latch-inherited-header h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.latch-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.latch-revision {
+  padding: 5px 10px;
+  color: var(--muted);
+  background: #f5f7f5;
+  border: 1px solid var(--border);
+}
+.latch-message-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+.latch-message {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 2px;
+}
+.latch-message + .latch-message {
+  border-top: 1px solid #edf0ee;
+}
+.latch-avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 11px;
+  color: #fff;
+  background: var(--accent);
+  font-size: 13px;
+  font-weight: 750;
+}
+.latch-avatar[data-author="Marcus"] {
+  background: #365c98;
+}
+.latch-avatar[data-author="Ben"] {
+  background: #9a6236;
+}
+.latch-message-body {
+  min-width: 0;
+}
+.latch-message-meta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.latch-message-meta strong {
+  font-size: 13px;
+}
+.latch-message-meta time,
+.latch-message-meta code {
+  color: var(--muted);
+  font-size: 10px;
+}
+.latch-message-body p {
+  margin: 0;
+  color: #263832;
+  overflow-wrap: anywhere;
+}
+.latch-local-badge {
+  padding: 2px 7px;
+  color: #6d4b21;
+  background: var(--warm);
+}
+.latch-composer {
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.latch-composer-fields {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 10px;
+}
+.latch-composer label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.latch-composer input,
+.latch-composer select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  color: var(--text);
+  background: #fafbfa;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+.latch-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.latch-button {
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-weight: 650;
+}
+.latch-button-primary {
+  color: #fff;
+  background: var(--accent);
+}
+.latch-button-primary:hover {
+  background: var(--accent-dark);
+}
+.latch-button-secondary {
+  color: var(--text);
+  background: #f5f7f5;
+  border-color: var(--border);
+}
+.latch-results-panel {
+  display: flex;
+  min-height: 560px;
+  flex-direction: column;
+}
+.latch-status-dot {
+  position: relative;
+  padding-left: 14px;
+  color: var(--muted);
+}
+.latch-status-dot::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #aeb8b4;
+  content: "";
+  transform: translateY(-50%);
+}
+.latch-empty-results {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  padding: 34px 18px;
+  text-align: center;
+}
+.latch-empty-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  place-items: center;
+  border-radius: 15px;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  font-size: 22px;
+}
+.latch-empty-results h3 {
+  margin-bottom: 8px;
+  font-size: 17px;
+}
+.latch-empty-results p {
+  max-width: 330px;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 13px;
+}
+.latch-catch-button {
+  width: 100%;
+}
+.latch-results-note {
+  min-height: 38px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.latch-inherited {
+  margin-top: 34px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+.latch-inherited-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+.latch-inherited-header > p {
+  max-width: 560px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.latch-inherited-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
 }
 .ck-workspace {
   max-width: 1160px;
