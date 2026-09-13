@@ -9,6 +9,21 @@ export const metadata: Metadata = {
     "Turn team conversation into reviewable commitments, evidence, and dependencies.",
 };
 
+function modelIsConfigured() {
+  const provider = (process.env.MODEL_PROVIDER || "openai")
+    .trim()
+    .toLowerCase();
+  const keyNames: Record<string, string> = {
+    openai: "OPENAI_API_KEY",
+    openrouter: "OPENROUTER_API_KEY",
+    anthropic: "ANTHROPIC_API_KEY",
+    google: "GOOGLE_API_KEY",
+  };
+  const keyName = keyNames[provider];
+  const value = keyName ? process.env[keyName] : undefined;
+  return Boolean(value && value !== "stub-replace-me");
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -23,7 +38,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <Providers modelConfigured={modelIsConfigured()}>{children}</Providers>
       </body>
     </html>
   );

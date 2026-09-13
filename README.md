@@ -10,6 +10,49 @@
 
 </div>
 
+## LATCH — conversation commitment agent
+
+LATCH helps a busy team recover important work from a long conversation. It
+separates accepted commitments from suggestions, preserves the exact message
+evidence, maps direct dependencies, and requires a human review before saving a
+durable Ambiguous task.
+
+### Run the web demo
+
+1. Install [Node.js](https://nodejs.org/) 22 or newer and clone this repository.
+2. Run `npm ci`.
+3. Copy `.env.example` to `.env`.
+4. Replace `OPENAI_API_KEY=stub-replace-me` with a real OpenAI API key.
+5. To enable real saves, add `AMBIGUOUS_API_KEY` from your Ambiguous workspace.
+6. Run `npm run dev:web`, then open [http://127.0.0.1:3100](http://127.0.0.1:3100).
+
+`LATCH_EXTRACTION_MODEL` controls the structured extraction agent. The
+CopilotKit assistant follows `MODEL_PROVIDER` and `MODEL`. Extraction and
+review never create an external record; only **Approve & save to Ambiguous**
+writes, and the app immediately reads the same provider record back.
+
+### Demo flow
+
+1. Read or add messages in the sample launch-day thread.
+2. Click **Catch commitments**.
+3. Inspect commitment cards, exact quotes, suggestions, and dependency arrows.
+4. Click **Review before saving** on one commitment and edit only the reviewable
+   fields.
+5. Prepare the immutable proposal, then explicitly approve it.
+6. Refresh from Ambiguous and verify the same record ID and LATCH metadata.
+
+### Team ownership
+
+- **Member 1:** conversation workspace, local message states, and demo layout.
+- **Member 2:** typed extraction schema, OpenAI Agents SDK extraction, semantic
+  validation, stable IDs, CopilotKit context/tools, and Commitment Graph.
+- **Member 3:** review gate, immutable proposal, Ambiguous adapter, duplicate
+  prevention, provider read-back, persistence display, and failure recovery.
+
+Run `npm run verify` before pushing. Work on separate Git branches and open a
+pull request into `main`; VS Code is the editor, while GitHub is what
+synchronizes the code across devices.
+
 ## Overview
 
 Build for **[Agents, Everywhere: Bots, Channels, & More](https://aitinkerers.org/hackathons/global/agents-everywhere)**, the AI Tinkerers global hackathon on **September 12–13, 2026**. Choose your city on the event page for its local schedule. Put an agent inside a conversation, an app, a phone, or a physical environment. Make the context of that place essential to what it can do.

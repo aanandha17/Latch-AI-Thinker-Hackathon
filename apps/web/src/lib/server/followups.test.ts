@@ -5,12 +5,23 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FollowupService } from "./followups";
 import type { Workplace, WorkplaceTask } from "./workplace";
+import { latchDemoThread } from "../latch-demo";
 
 const session = "a".repeat(64);
 const input = {
-  incidentId: "INC-1042",
-  title: "Check pool metrics",
-  details: "Compare before and after deploy.",
+  thread: latchDemoThread,
+  commitment: {
+    id: "c-demo-slides",
+    title: "Finish the three demo slides",
+    owner: "Marcus",
+    dueText: "today by 5 PM",
+    dueAt: "2026-09-13T17:00:00+08:00",
+    sourceMessageIds: ["m2"],
+    evidenceQuote: "I'll finish the three demo slides today by 5 PM.",
+    confidence: "high" as const,
+    needsReview: false,
+    prerequisiteIds: [],
+  },
 };
 class FakeWorkplace implements Workplace {
   workspaceId = "workspace-a";
@@ -110,7 +121,7 @@ test("concurrent approval and restart cannot duplicate a saved task; refresh rea
   const restarted = new FollowupService(provider, directory);
   await restarted.approve(session, p.id);
   const before = provider.reads;
-  assert.equal((await restarted.list("INC-1042"))[0].id, provider.tasks[0].id);
+  assert.equal((await restarted.list("latch-demo-01"))[0].id, provider.tasks[0].id);
   assert.ok(provider.reads > before);
   const another = await restarted.propose(session, input);
   await restarted.approve(session, another.id);
@@ -144,11 +155,22 @@ test("a lost create reply is reconciled from Ambiguous without a second create",
 test("invalid proposal inputs fail before provider writes", async (t) => {
   const { service, provider } = await fixture(t);
   await assert.rejects(
-    service.propose(session, { ...input, incidentId: "unknown" }),
+    service.propose(session, {
+      ...input,
+      thread: { ...latchDemoThread, messages: [] },
+    }),
   );
-  await assert.rejects(service.propose(session, { ...input, title: " " }));
   await assert.rejects(
-    service.propose(session, { ...input, details: "x".repeat(4001) }),
+    service.propose(session, {
+      ...input,
+      commitment: { ...input.commitment, title: " " },
+    }),
+  );
+  await assert.rejects(
+    service.propose(session, {
+      ...input,
+      commitment: { ...input.commitment, evidenceQuote: "invented evidence" },
+    }),
   );
   assert.equal(provider.creates, 0);
 });
@@ -177,6 +199,24 @@ test("read-back fields must match the exact approved payload", async (t) => {
   await assert.rejects(
     service.approve(session, p.id),
     /differs from the approved fields/,
+  );
+  assert.equal(provider.creates, 1);
+});
+
+test("a changed proposal cannot create a second record for the same stable commitment", async (t) => {
+  const { service, provider } = await fixture(t);
+  const original = await service.propose(session, input);
+  await service.approve(session, original.id);
+  const changed = await service.propose(session, {
+    ...input,
+    commitment: {
+      ...input.commitment,
+      title: "Finish and proofread the three demo slides",
+    },
+  });
+  await assert.rejects(
+    service.approve(session, changed.id),
+    /already saved with different reviewed fields/,
   );
   assert.equal(provider.creates, 1);
 });

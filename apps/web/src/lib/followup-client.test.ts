@@ -19,8 +19,8 @@ test("parallel reads and proposals wait for a single completed session handshake
     return Response.json({ status: "ready" });
   });
   const reads = [
-    request("?incidentId=INC-1042"),
-    request("?incidentId=INC-1043"),
+    request("?threadId=latch-demo-01"),
+    request("?threadId=latch-demo-02"),
     request("", { operation: "propose" }),
   ];
   assert.deepEqual(urls, ["/api/followups?session=1"]);

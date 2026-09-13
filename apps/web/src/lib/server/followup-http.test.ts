@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createFollowupHandler } from "./followup-http";
 import type { Workplace, WorkplaceTask } from "./workplace";
+import { latchDemoThread } from "../latch-demo";
 const origin = "http://localhost:3100";
 const cookie = `web-followup-session=${"a".repeat(64)}`;
 const request = (body: unknown, headers: Record<string, string> = {}) =>
@@ -15,9 +16,19 @@ const request = (body: unknown, headers: Record<string, string> = {}) =>
   });
 const proposal = {
   operation: "propose",
-  incidentId: "INC-1042",
-  title: "Compare metrics",
-  details: "Use the selected incident context.",
+  thread: latchDemoThread,
+  commitment: {
+    id: "c-demo-slides",
+    title: "Finish the three demo slides",
+    owner: "Marcus",
+    dueText: "today by 5 PM",
+    dueAt: "2026-09-13T17:00:00+08:00",
+    sourceMessageIds: ["m2"],
+    evidenceQuote: "I'll finish the three demo slides today by 5 PM.",
+    confidence: "high",
+    needsReview: false,
+    prerequisiteIds: [],
+  },
 };
 
 test("unconfigured GET establishes a protected session, while writes fail explicitly", async () => {
@@ -113,7 +124,7 @@ test("HTTP proposal/approval/read flow rejects edited fields and never writes on
   const { task } = await saved.json();
   assert.equal(task.description, prepared.description);
   const refreshed = await handler(
-    new Request(`${origin}/api/followups?incidentId=INC-1042`, {
+    new Request(`${origin}/api/followups?threadId=latch-demo-01`, {
       headers: { cookie },
     }),
   );
@@ -227,7 +238,7 @@ test("cleanup failures do not mask successful provider responses", async (t) => 
         {
           id: "22222222-2222-4222-8222-222222222222",
           title: "Compare metrics",
-          description: "agents-everywhere:INC-1042",
+          description: "latch:thread:latch-demo-01",
           url: null,
         },
       ];
@@ -249,7 +260,7 @@ test("cleanup failures do not mask successful provider responses", async (t) => 
     directory: "/unused",
   });
   const response = await handler(
-    new Request(`${origin}/api/followups?incidentId=INC-1042`, {
+    new Request(`${origin}/api/followups?threadId=latch-demo-01`, {
       headers: { cookie },
     }),
   );
@@ -289,7 +300,7 @@ test("cleanup failures do not mask controlled provider errors", async (t) => {
     directory: "/unused",
   });
   const response = await handler(
-    new Request(`${origin}/api/followups?incidentId=INC-1042`, {
+    new Request(`${origin}/api/followups?threadId=latch-demo-01`, {
       headers: { cookie },
     }),
   );

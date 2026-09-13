@@ -5,12 +5,13 @@ import type {
   WorkplaceStatus,
   WorkplaceTask,
 } from "./followup-types";
+import type { LatchThread, ReviewedCommitment } from "./latch-schema";
 
 import { requestFollowups as api } from "./followup-client";
 
-export function useWorkplace(incidentId: string) {
+export function useWorkplace(threadId: string) {
   const [snapshot, setSnapshot] = useState<{
-    incidentId: string;
+    threadId: string;
     status: WorkplaceStatus;
   }>();
   const [proposal, setProposal] = useState<Proposal>();
@@ -18,26 +19,26 @@ export function useWorkplace(incidentId: string) {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const sequence = useRef(0);
-  const selectedIncident = useRef(incidentId);
-  selectedIncident.current = incidentId;
+  const selectedThread = useRef(threadId);
+  selectedThread.current = threadId;
   const refresh = useCallback(async () => {
-    const incidentId = selectedIncident.current;
+    const threadId = selectedThread.current;
     const request = ++sequence.current;
     setError("");
     try {
       const status = await api<WorkplaceStatus>(
-        `?incidentId=${encodeURIComponent(incidentId)}`,
+        `?threadId=${encodeURIComponent(threadId)}`,
       );
       if (
         request === sequence.current &&
-        incidentId === selectedIncident.current
+        threadId === selectedThread.current
       )
-        setSnapshot({ incidentId, status });
+        setSnapshot({ threadId, status });
       return status;
     } catch (error) {
       if (
         request === sequence.current &&
-        incidentId === selectedIncident.current
+        threadId === selectedThread.current
       ) {
         setSnapshot(undefined);
         setError(
@@ -55,9 +56,9 @@ export function useWorkplace(incidentId: string) {
     return () => {
       sequence.current++;
     };
-  }, [incidentId, refresh]);
+  }, [threadId, refresh]);
   const propose = useCallback(
-    async (draft: { incidentId: string; title: string; details: string }) => {
+    async (draft: { thread: LatchThread; commitment: ReviewedCommitment }) => {
       try {
         const { proposal } = await api<{ proposal: Proposal }>("", {
           operation: "propose",
@@ -127,8 +128,14 @@ export function useWorkplace(incidentId: string) {
       setBusy(false);
     }
   };
-  const status =
-    snapshot?.incidentId === incidentId ? snapshot.status : undefined;
+  const discardProposal = useCallback(() => {
+    setProposal((current) => {
+      if (current)
+        setNotice("Review changed. Prepare a new approval proposal when ready.");
+      return undefined;
+    });
+  }, []);
+  const status = snapshot?.threadId === threadId ? snapshot.status : undefined;
   return {
     status,
     proposal,
@@ -140,6 +147,7 @@ export function useWorkplace(incidentId: string) {
     retrieve,
     approve,
     deny,
+    discardProposal,
   };
 }
 export type WorkplaceControls = ReturnType<typeof useWorkplace>;

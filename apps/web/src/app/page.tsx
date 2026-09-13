@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
 import {
-  CopilotChat,
-  useConfigureSuggestions,
-} from "@copilotkit/react-core/v2";
-import { GenerativeUI } from "@/components/generative-ui";
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { CopilotChat } from "@copilotkit/react-core/v2";
 import { AppControl } from "@/components/app-control";
-import { useWorkplace } from "@/lib/use-workplace";
+import { CommitmentGraph } from "@/components/commitment-graph";
+import { CommitmentReview } from "@/components/commitment-review";
 import { WorkplaceFollowups } from "@/components/workplace-followups";
+import { useModelConfigured } from "@/components/providers";
+import { extractCurrentThread as requestExtraction } from "@/lib/latch-client";
 import {
   createLocalMessage,
   latchAuthors,
@@ -16,8 +21,8 @@ import {
   type LatchAuthor,
   type LatchMessage,
 } from "@/lib/latch-demo";
-
-const inheritedIncidentId = "INC-1042";
+import type { LatchExtraction, LatchThread } from "@/lib/latch-schema";
+import { useWorkplace } from "@/lib/use-workplace";
 
 export default function Home() {
   const [messages, setMessages] = useState<LatchMessage[]>(() => [
@@ -26,64 +31,123 @@ export default function Home() {
   const [revision, setRevision] = useState(latchDemoThread.revision);
   const [author, setAuthor] = useState<LatchAuthor>(latchAuthors[0]);
   const [draft, setDraft] = useState("");
+  const [extraction, setExtraction] = useState<LatchExtraction | null>(null);
+  const [extractionError, setExtractionError] = useState("");
   const [extractionNotice, setExtractionNotice] = useState("");
-  const workplace = useWorkplace(inheritedIncidentId);
+  const [extracting, setExtracting] = useState(false);
+  const [reviewingId, setReviewingId] = useState<string>();
+  const extractionSequence = useRef(0);
 
-  useConfigureSuggestions(
-    {
-      suggestions: [
-        {
-          title: "Find commitments",
-          message:
-            "Identify the commitments and suggestions in the selected team conversation.",
-        },
-        {
-          title: "Explain a dependency",
-          message:
-            "Who is waiting on whom in this team conversation, and what evidence supports it?",
-        },
-      ],
-      available: "before-first-message",
-    },
-    [],
+  const thread = useMemo<LatchThread>(
+    () => ({ ...latchDemoThread, revision, messages }),
+    [messages, revision],
   );
+  const latestThread = useRef(thread);
+  latestThread.current = thread;
+  const workplace = useWorkplace(thread.threadId);
+  const modelConfigured = useModelConfigured();
+
+  const catchCommitments = useCallback(async () => {
+    const snapshot = thread;
+    const request = ++extractionSequence.current;
+    setExtracting(true);
+    setExtractionError("");
+    setExtractionNotice("Analyzing quoted conversation data…");
+    setReviewingId(undefined);
+    workplace.discardProposal();
+    try {
+      const result = await requestExtraction(snapshot);
+      if (
+        request !== extractionSequence.current ||
+        latestThread.current.revision !== snapshot.revision
+      )
+        throw new Error(
+          "The conversation changed during extraction. Run Catch commitments again.",
+        );
+      setExtraction(result);
+      setExtractionNotice(
+        `Validated ${result.commitments.length} commitment(s), ${result.suggestions.length} suggestion(s), and ${result.dependencies.length} dependency edge(s).`,
+      );
+      return result;
+    } catch (error) {
+      if (request === extractionSequence.current) {
+        setExtraction(null);
+        setExtractionError(
+          error instanceof Error ? error.message : "Unable to analyze this conversation.",
+        );
+        setExtractionNotice("No Ambiguous task was created.");
+      }
+      throw error;
+    } finally {
+      if (request === extractionSequence.current) setExtracting(false);
+    }
+  }, [thread, workplace.discardProposal]);
+
+  const savedIds = useMemo(
+    () =>
+      new Set(
+        workplace.status?.status === "connected"
+          ? workplace.status.tasks
+              .map((task) => task.latch?.commitmentId)
+              .filter((id): id is string => Boolean(id))
+          : [],
+      ),
+    [workplace.status],
+  );
+  const reviewingCommitment = extraction?.commitments.find(
+    (item) => item.id === reviewingId,
+  );
+  const prerequisiteIds =
+    extraction?.dependencies
+      .filter((item) => item.dependentId === reviewingId)
+      .map((item) => item.prerequisiteId) ?? [];
+
+  function invalidateExtraction(message: string) {
+    extractionSequence.current += 1;
+    setExtraction(null);
+    setReviewingId(undefined);
+    setExtractionError("");
+    setExtractionNotice(message);
+    setExtracting(false);
+    workplace.discardProposal();
+  }
 
   function addMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draft.trim()) return;
-
     setMessages((current) => [
       ...current,
       createLocalMessage(current, author, draft),
     ]);
     setRevision((current) => current + 1);
     setDraft("");
-    setExtractionNotice("");
+    invalidateExtraction("Conversation changed. Run Catch commitments to analyze the new revision.");
   }
 
   function resetSample() {
     setMessages([...latchDemoThread.messages]);
     setRevision(latchDemoThread.revision);
     setDraft("");
-    setExtractionNotice("");
+    invalidateExtraction("Sample conversation restored. Run Catch commitments when ready.");
   }
 
   return (
     <>
-      <GenerativeUI />
-      <AppControl
-        selectedId={inheritedIncidentId}
-        selectIncident={() => undefined}
-        workplace={workplace}
-      />
+      {modelConfigured && (
+        <AppControl
+          thread={thread}
+          extraction={extraction}
+          workplace={workplace}
+          onCatch={catchCommitments}
+        />
+      )}
       <main className="latch-workspace">
         <header className="latch-header">
           <div>
             <p className="latch-eyebrow">LATCH / Commitment Graph</p>
             <h1>Catch the promises work forgets.</h1>
             <p className="latch-intro">
-              Turn a busy team conversation into reviewable commitments,
-              evidence, and dependencies.
+              Turn a busy team conversation into reviewable commitments, evidence, dependencies, and durable workplace records.
             </p>
           </div>
           <span className="latch-sample-tag">Sample data</span>
@@ -96,13 +160,11 @@ export default function Home() {
                 <p className="latch-kicker">Sample team workspace</p>
                 <h2 id="thread-title">Launch-day coordination</h2>
                 <p className="latch-metadata">
-                  <code>{latchDemoThread.threadId}</code>
+                  <code>{thread.threadId}</code>
                   <span aria-hidden="true">·</span>
-                  <time dateTime={latchDemoThread.date}>
-                    {latchDemoThread.date}
-                  </time>
+                  <time dateTime={thread.date}>{thread.date}</time>
                   <span aria-hidden="true">·</span>
-                  <span>{latchDemoThread.timezone}</span>
+                  <span>{thread.timezone}</span>
                 </p>
               </div>
               <span className="latch-revision">Revision {revision}</span>
@@ -111,11 +173,7 @@ export default function Home() {
             <ol className="latch-message-list" aria-label="Team messages">
               {messages.map((message) => (
                 <li className="latch-message" key={message.id}>
-                  <div
-                    className="latch-avatar"
-                    aria-hidden="true"
-                    data-author={message.author}
-                  >
+                  <div className="latch-avatar" aria-hidden="true" data-author={message.author}>
                     {message.author.charAt(0)}
                   </div>
                   <div className="latch-message-body">
@@ -139,14 +197,10 @@ export default function Home() {
                   <span>Author</span>
                   <select
                     value={author}
-                    onChange={(event) =>
-                      setAuthor(event.target.value as LatchAuthor)
-                    }
+                    onChange={(event) => setAuthor(event.target.value as LatchAuthor)}
                   >
                     {latchAuthors.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
+                      <option key={name} value={name}>{name}</option>
                     ))}
                   </select>
                 </label>
@@ -165,89 +219,105 @@ export default function Home() {
                 <button className="latch-button latch-button-primary" type="submit">
                   Add message
                 </button>
-                <button
-                  className="latch-button latch-button-secondary"
-                  type="button"
-                  onClick={resetSample}
-                >
+                <button className="latch-button latch-button-secondary" type="button" onClick={resetSample}>
                   Reset sample
                 </button>
               </div>
             </form>
           </section>
 
-          <section
-            className="latch-panel latch-results-panel"
-            aria-labelledby="results-title"
-          >
+          <section className="latch-panel latch-results-panel" aria-labelledby="results-title">
             <header className="latch-panel-header">
               <div>
                 <p className="latch-kicker">Commitment Graph</p>
                 <h2 id="results-title">Detected work</h2>
               </div>
-              <span className="latch-status-dot">Not analyzed</span>
+              <span className="latch-status-dot" data-ready={Boolean(extraction)}>
+                {extracting ? "Analyzing" : extraction ? "Validated" : "Not analyzed"}
+              </span>
             </header>
 
-            <div className="latch-empty-results">
-              <div className="latch-empty-icon" aria-hidden="true">
-                ↗
+            {extraction ? (
+              <CommitmentGraph
+                extraction={extraction}
+                savedIds={savedIds}
+                reviewingId={reviewingId}
+                onReview={setReviewingId}
+              />
+            ) : (
+              <div className="latch-empty-results">
+                <div className="latch-empty-icon" aria-hidden="true">↗</div>
+                <h3>No commitments extracted yet</h3>
+                <p>
+                  Run the validated agent to separate commitments from suggestions and map direct dependencies.
+                </p>
               </div>
-              <h3>No commitments extracted yet</h3>
-              <p>
-                The validated extraction service will populate commitments,
-                suggestions, evidence, and dependency arrows here.
-              </p>
-            </div>
+            )}
 
             <button
               className="latch-button latch-button-primary latch-catch-button"
               type="button"
-              onClick={() =>
-                setExtractionNotice(
-                  "Extraction is not connected in this UI milestone. No result or external task was created.",
-                )
-              }
+              disabled={extracting}
+              onClick={() => catchCommitments().catch(() => {})}
             >
-              Catch commitments
+              {extracting ? "Catching commitments…" : "Catch commitments"}
             </button>
+            {extractionError && <p className="ck-error" role="alert">{extractionError}</p>}
             <p className="latch-results-note" role="status">
-              {extractionNotice ||
-                "This control does not save anything to Ambiguous."}
+              {extractionNotice || "Analysis never saves anything to Ambiguous."}
             </p>
           </section>
         </div>
 
-        <section className="latch-inherited" aria-labelledby="inherited-title">
+        {reviewingCommitment && (
+          <div className="latch-review-section">
+            <CommitmentReview
+              key={reviewingCommitment.id}
+              thread={thread}
+              commitment={reviewingCommitment}
+              prerequisiteIds={prerequisiteIds}
+              workplace={workplace}
+              onClose={() => setReviewingId(undefined)}
+            />
+          </div>
+        )}
+
+        <section className="latch-inherited" aria-labelledby="integration-title">
           <header className="latch-inherited-header">
             <div>
-              <p className="latch-kicker">Inherited starter integration</p>
-              <h2 id="inherited-title">Approval and assistant sandbox</h2>
+              <p className="latch-kicker">Review, approve, verify</p>
+              <h2 id="integration-title">Durable Ambiguous workflow</h2>
             </div>
             <p>
-              Retained temporarily while Members 2 and 3 migrate the typed
-              extraction and approval flows to LATCH.
+              LATCH stores the reviewed fields, evidence, dependency IDs, and stable commitment ID, then reads the same provider record back.
             </p>
           </header>
           <div className="latch-inherited-grid">
             <section className="latch-panel">
-              <WorkplaceFollowups
-                incidentId={inheritedIncidentId}
-                workplace={workplace}
-              />
+              <WorkplaceFollowups threadId={thread.threadId} workplace={workplace} />
             </section>
             <section className="ck-panel ck-assistant" aria-label="Assistant">
               <header className="ck-assistant-header">
-                <h2>Ask assistant</h2>
-                <p>Current starter chat, pending LATCH context integration.</p>
+                <h2>Ask LATCH</h2>
+                <p>The assistant sees the current thread and only validated extraction results.</p>
               </header>
-              <CopilotChat
-                className="ck-chat"
-                labels={{
-                  welcomeMessageText:
-                    "The LATCH conversation UI is ready for extraction integration.",
-                  chatInputPlaceholder: "Ask about the workspace…",
-                }}
-              />
+              {modelConfigured ? (
+                <CopilotChat
+                  className="ck-chat"
+                  labels={{
+                    welcomeMessageText:
+                      "I can analyze this conversation and explain its validated commitments. Saving always requires your approval button.",
+                    chatInputPlaceholder: "Ask about commitments or dependencies…",
+                  }}
+                />
+              ) : (
+                <div className="latch-assistant-setup">
+                  <strong>Assistant ready after model setup</strong>
+                  <p>
+                    Add a real model API key to the root <code>.env</code>, then restart the web app. The Commitment Graph uses <code>OPENAI_API_KEY</code>.
+                  </p>
+                </div>
+              )}
             </section>
           </div>
         </section>

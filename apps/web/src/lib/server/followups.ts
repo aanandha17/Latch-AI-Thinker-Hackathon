@@ -3,22 +3,24 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { findIncident } from "../incidents";
+import { createLatchRecord, commitmentMarker, parseLatchRecord, threadMarker } from "../latch-record";
+import { latchThreadSchema, reviewedCommitmentSchema } from "../latch-schema";
 import type { Proposal, WorkplaceTask } from "../followup-types";
 import type { Workplace } from "./workplace";
 
 const draftSchema = z
   .object({
-    incidentId: z.string(),
-    title: z.string().trim().min(1).max(200),
-    details: z.string().trim().min(1).max(4000),
+    thread: latchThreadSchema,
+    commitment: reviewedCommitmentSchema,
   })
   .strict();
 const storedSchema = z.object({
   id: z.uuid(),
-  incidentId: z.string(),
+  threadId: z.string(),
+  commitmentId: z.string(),
   title: z.string(),
   description: z.string(),
+  commitment: reviewedCommitmentSchema,
   workspaceId: z.string(),
   identityName: z.string(),
   identityId: z.string(),
@@ -28,8 +30,6 @@ const storedSchema = z.object({
 });
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
-const marker = (incidentId: string) =>
-  `agents-everywhere:${findIncident(incidentId).id}`;
 function fileExists(error: unknown) {
   return error instanceof Error && "code" in error && error.code === "EEXIST";
 }
@@ -45,32 +45,36 @@ export class FollowupService {
     private directory: string,
     private now = Date.now,
   ) {}
-  async list(incidentId: string) {
-    const tag = marker(incidentId);
-    return (await this.workplace.list(tag)).filter((t) =>
-      t.description.split("\n").includes(tag),
-    );
+  private enrich(task: WorkplaceTask): WorkplaceTask {
+    return { ...task, latch: parseLatchRecord(task.description) };
+  }
+  async list(threadId: string) {
+    const tag = threadMarker(z.string().trim().min(1).max(120).parse(threadId));
+    return (await this.workplace.list(tag))
+      .filter((task) => task.description.split("\n").includes(tag))
+      .map((task) => this.enrich(task));
   }
   async get(id: string) {
-    return this.workplace.get(id);
+    return this.enrich(await this.workplace.get(id));
   }
   async propose(session: string, input: unknown): Promise<Proposal> {
     const draft = draftSchema.parse(input);
-    const incident = findIncident(draft.incidentId);
     const identity = await this.workplace.identity();
     const actionKey = hash(
       JSON.stringify([
         identity.workspaceId,
-        incident.id,
-        draft.title,
-        draft.details,
+        draft.thread.threadId,
+        draft.commitment,
       ]),
     );
+    const record = createLatchRecord(draft.thread, draft.commitment, actionKey);
     const proposal = {
       id: randomUUID(),
-      incidentId: incident.id,
-      title: draft.title,
-      description: `${draft.details}\n\nSample incident: ${incident.id} — ${incident.title}\n${marker(incident.id)}\nfollowup:${actionKey}`,
+      threadId: draft.thread.threadId,
+      commitmentId: record.commitment.id,
+      title: record.title,
+      description: record.description,
+      commitment: record.commitment,
       workspaceId: identity.workspaceId,
       identityName: identity.name,
       identityId: identity.id,
@@ -135,6 +139,25 @@ export class FollowupService {
     }
     // The decision is bound to immutable server-held fields and this browser session.
     await this.decide(id, "approved");
+    const logicalMatch = async () => {
+      const tag = commitmentMarker(proposal.commitmentId);
+      const found = (await this.workplace.list(tag)).filter((task) =>
+        task.description.split("\n").includes(tag),
+      );
+      if (found.length > 1)
+        throw new FollowupError(
+          "Ambiguous contains multiple records for this commitment; inspect the workspace before continuing.",
+        );
+      if (
+        found[0] &&
+        (found[0].title !== proposal.title ||
+          found[0].description !== proposal.description)
+      )
+        throw new FollowupError(
+          "This commitment is already saved with different reviewed fields. Refresh and inspect that record instead of creating a duplicate.",
+        );
+      return found[0];
+    };
     const reconcile = async () => {
       const found = (
         await this.workplace.list(`followup:${proposal.actionKey}`)
@@ -159,8 +182,10 @@ export class FollowupService {
           `Ambiguous task ${id} differs from the approved fields. Inspect the workspace; do not create it again.`,
         );
       }
-      return record;
+      return this.enrich(record);
     };
+    const savedCommitment = await logicalMatch();
+    if (savedCommitment) return readBack(savedCommitment.id);
     const existing = await reconcile();
     if (existing) return readBack(existing.id);
     let sent = false;

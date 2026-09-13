@@ -3,21 +3,21 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { FollowupService } from "./followups";
 import type { Workplace } from "./workplace";
+import { latchThreadSchema, reviewedCommitmentSchema } from "../latch-schema";
 const cookieName = "web-followup-session";
 const command = z.discriminatedUnion("operation", [
   z
     .object({
       operation: z.literal("propose"),
-      incidentId: z.string(),
-      title: z.string(),
-      details: z.string(),
+      thread: latchThreadSchema,
+      commitment: reviewedCommitmentSchema,
     })
     .strict(),
   z.object({ operation: z.literal("approve"), proposalId: z.uuid() }).strict(),
   z.object({ operation: z.literal("deny"), proposalId: z.uuid() }).strict(),
 ]);
 const setup =
-  "Set AMBIGUOUS_API_KEY in root .env and restart the web app. Select sample incidents now; saving and retrieval require a real Ambiguous workspace.";
+  "Set AMBIGUOUS_API_KEY in root .env and restart the web app. Extraction and review still work locally; saving and retrieval require a real Ambiguous workspace.";
 
 async function closeConnection(connection: { close(): Promise<void> }) {
   try {
@@ -120,7 +120,7 @@ export function createFollowupHandler(options: {
             workspaceId: identity.workspaceId,
             identityName: identity.name,
             tasks: await service.list(
-              url.searchParams.get("incidentId") ?? "INC-1042",
+              url.searchParams.get("threadId") ?? "latch-demo-01",
             ),
           }),
         );
@@ -154,7 +154,7 @@ export function createFollowupHandler(options: {
           reply(
             {
               error:
-                "Invalid request or provider data. Check the incident, title, details, and record ID.",
+                "Invalid request or provider data. Check the conversation, reviewed commitment, and record ID.",
             },
             400,
           ),
