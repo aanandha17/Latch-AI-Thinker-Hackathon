@@ -9,24 +9,55 @@ Choose your city on the [global event page](https://aitinkerers.org/hackathons/g
 - [ ] We identify inherited templates, libraries, prompts, components, and starter code separately from our event work
 
 **What we inherited**
-<!-- Include this starter kit and any reused examples. -->
+
+The official Agents, Everywhere starter kit supplied the Next.js and
+CopilotKit web infrastructure, dependency setup, example interaction patterns,
+and an Ambiguous MCP integration pattern. We reused those building blocks and
+their documented security constraints.
 
 **What we built during the hackathon**
-<!-- Describe the new core interaction and point to its implementation. Running the supplied incident demo alone does not establish a new project. -->
+
+LATCH is our conversation-to-commitment workflow: typed structured extraction,
+exact-message evidence validation, stable commitment IDs, suggestion
+separation, dependency-cycle protection, a Commitment Graph, editable review,
+an immutable approval proposal, and durable Ambiguous task creation with
+read-back and duplicate prevention. The team must confirm the build timing
+before checking the eligibility boxes above.
 
 ## Title and description
 
 **What you built**
-<!-- Explain the complete interaction your demo shows. -->
+
+**LATCH — conversation commitment agent.** It reads a busy team conversation,
+separates accepted commitments from suggestions, extracts owners and stated
+deadlines, maps dependencies, and preserves an exact evidence quote for every
+item. A person reviews the fields before LATCH creates a real Ambiguous task;
+the app then reads that provider record back and prevents duplicate saves.
 
 **Who it is for**
-<!-- Name a person in a concrete situation. -->
+
+Small, fast-moving teams coordinating launches, hackathons, and projects in
+chat, where members cannot read every message and verbal promises are easily
+lost.
 
 **Why the context matters**
-<!-- What did the agent know or do because it lived in this surface? -->
+
+LATCH sees the thread’s authors, timestamps, message IDs, exact wording, and
+current review state. Without that surrounding context, a standalone chatbot
+would require users to paste the conversation manually and could not prove
+which message supports a commitment or whether a dependency was actually
+stated.
 
 **Sponsor technologies used**
-<!-- Name the tools you actually used and the visible contribution of each. -->
+
+- **CopilotKit:** contextual in-app assistant and UI integration.
+- **OpenRouter:** free routed model used for structured commitment extraction.
+- **Ambiguous AI:** persistent task creation, provider identity, exact
+  read-back, and refresh verification.
+
+Exa is configured for optional research, but it is not part of the ordinary
+web workflow shown in the core demo and should not be claimed unless the team
+adds and demonstrates that interaction.
 
 ## Evidence for the judging criteria
 
@@ -52,6 +83,8 @@ Judges score each of the four official criteria from 1–5. This checklist helps
 - [ ] Sample data, session-only state, and unimplemented integrations are clearly labeled
 
 ## Two-minute demo video
+
+Use [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for the timed recording flow.
 
 - [ ] Show the surface and existing context before the prompt
 - [ ] Demonstrate one complete interaction
