@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { latchDemoThread } from "../latch-demo";
-import { extractLatchThread } from "./latch-extract";
+import {
+  extractLatchThread,
+  LatchExtractionConfigurationError,
+  resolveLatchExtractionConfiguration,
+} from "./latch-extract";
 import { createLatchExtractionHandler } from "./latch-http";
 
 const emptyOutput = {
@@ -10,6 +14,31 @@ const emptyOutput = {
   dependencies: [],
   warnings: [],
 };
+
+test("OpenRouter free can power extraction without an OpenAI key", () => {
+  const configuration = resolveLatchExtractionConfiguration({
+    MODEL_PROVIDER: "openrouter",
+    MODEL: "openrouter/free",
+    OPENROUTER_API_KEY: "test-openrouter-key",
+  });
+  assert.equal(configuration.provider, "openrouter");
+  assert.equal(configuration.model, "openrouter/free");
+  assert.equal(configuration.tracingDisabled, true);
+  assert.ok(configuration.modelProvider);
+});
+
+test("the selected extraction provider reports its missing key", () => {
+  assert.throws(
+    () =>
+      resolveLatchExtractionConfiguration({
+        MODEL_PROVIDER: "openrouter",
+        OPENAI_API_KEY: "test-openai-key",
+      }),
+    (error: unknown) =>
+      error instanceof LatchExtractionConfigurationError &&
+      /OPENROUTER_API_KEY/.test(error.message),
+  );
+});
 
 test("the extraction service uses an injectable runner and validates its output", async () => {
   let received = "";

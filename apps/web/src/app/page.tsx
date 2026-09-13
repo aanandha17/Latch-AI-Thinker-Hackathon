@@ -314,7 +314,7 @@ export default function Home() {
                 <div className="latch-assistant-setup">
                   <strong>Assistant ready after model setup</strong>
                   <p>
-                    Add a real model API key to the root <code>.env</code>, then restart the web app. The Commitment Graph uses <code>OPENAI_API_KEY</code>.
+                    Add your OpenRouter API key to the root <code>.env</code>, then restart the web app. The free setup does not require an OpenAI key.
                   </p>
                 </div>
               )}

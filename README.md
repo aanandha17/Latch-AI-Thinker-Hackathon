@@ -22,12 +22,14 @@ durable Ambiguous task.
 1. Install [Node.js](https://nodejs.org/) 22 or newer and clone this repository.
 2. Run `npm ci`.
 3. Copy `.env.example` to `.env`.
-4. Replace `OPENAI_API_KEY=stub-replace-me` with a real OpenAI API key.
+4. Add your private `OPENROUTER_API_KEY`; the default `openrouter/free` model
+   needs no OpenAI key.
 5. To enable real saves, add `AMBIGUOUS_API_KEY` from your Ambiguous workspace.
 6. Run `npm run dev:web`, then open [http://127.0.0.1:3100](http://127.0.0.1:3100).
 
-`LATCH_EXTRACTION_MODEL` controls the structured extraction agent. The
-CopilotKit assistant follows `MODEL_PROVIDER` and `MODEL`. Extraction and
+`LATCH_EXTRACTION_MODEL` optionally overrides the structured extraction model.
+By default, extraction and the CopilotKit assistant both follow
+`MODEL_PROVIDER` and `MODEL`. Extraction and
 review never create an external record; only **Approve & save to Ambiguous**
 writes, and the app immediately reads the same provider record back.
 
@@ -44,7 +46,7 @@ writes, and the app immediately reads the same provider record back.
 ### Team ownership
 
 - **Member 1:** conversation workspace, local message states, and demo layout.
-- **Member 2:** typed extraction schema, OpenAI Agents SDK extraction, semantic
+- **Member 2:** typed extraction schema, Agents SDK extraction, semantic
   validation, stable IDs, CopilotKit context/tools, and Commitment Graph.
 - **Member 3:** review gate, immutable proposal, Ambiguous adapter, duplicate
   prevention, provider read-back, persistence display, and failure recovery.

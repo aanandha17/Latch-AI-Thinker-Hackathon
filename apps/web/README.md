@@ -19,20 +19,20 @@ npm ci
 cp .env.example .env
 ```
 
-Run the commands below from the repository root. Configure root `.env` with [OpenAI](../../using-sponsor-tools.md#openai) and [Ambiguous AI](../../using-sponsor-tools.md#ambiguous-ai):
+Run the commands below from the repository root. The free setup uses [OpenRouter](../../using-sponsor-tools.md#openrouter); add [Ambiguous AI](../../using-sponsor-tools.md#ambiguous-ai) only when you want real persistent saves:
 
 ```dotenv
-MODEL_PROVIDER=openai
-OPENAI_API_KEY=your-key
-MODEL=gpt-5.6-sol
+MODEL_PROVIDER=openrouter
+OPENROUTER_API_KEY=your-key
+MODEL=openrouter/free
 AMBIGUOUS_API_KEY=your-workspace-key
 ```
 
-Choose an OpenAI model your account can use. Use a demo workspace you control for the first write. This web template needs no managed Channel or Intelligence account.
+Free OpenRouter models may be rate-limited or temporarily unavailable. Use a demo workspace you control for the first write. This web template needs no managed Channel, Intelligence account, or OpenAI key.
 
 For CopilotKit onboarding, use the [official prompt](../../README.md#onboarding-prompt).
 
-To use OpenRouter, follow the [shared provider settings](../../using-sponsor-tools.md#openrouter): set `MODEL_PROVIDER=openrouter`, `OPENROUTER_API_KEY`, and a `MODEL` slug with tool support. Keep the Ambiguous workspace key; an OpenAI key is not required for OpenRouter chat.
+To choose another model, follow the [shared provider settings](../../using-sponsor-tools.md#openrouter) and select an OpenRouter model with structured-output support. Keep the Ambiguous workspace key for persistent records.
 
 ```bash
 npm run dev:web

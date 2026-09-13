@@ -1,4 +1,4 @@
-import { Agent, run } from "@openai/agents";
+import { Agent, OpenAIProvider, Runner, type ModelProvider } from "@openai/agents";
 import { latchExtractionInstructions } from "../latch-instructions";
 import {
   latchExtractionSchema,
@@ -11,26 +11,85 @@ import { validateAndNormalizeExtraction } from "../latch-validate";
 export type LatchExtractionRunner = (thread: LatchThread) => Promise<unknown>;
 
 export class LatchExtractionConfigurationError extends Error {
-  constructor() {
-    super("Set a real OPENAI_API_KEY in the root .env file, then restart the web app.");
+  constructor(message: string) {
+    super(message);
     this.name = "LatchExtractionConfigurationError";
   }
 }
 
-export async function runLatchExtractionAgent(thread: LatchThread) {
-  if (
-    !process.env.OPENAI_API_KEY ||
-    process.env.OPENAI_API_KEY === "stub-replace-me"
+type LatchExtractionConfiguration = {
+  model: string;
+  modelProvider?: ModelProvider;
+  provider: "openai" | "openrouter";
+  tracingDisabled: boolean;
+};
+
+function hasKey(value: string | undefined) {
+  return Boolean(value?.trim() && value !== "stub-replace-me");
+}
+
+export function resolveLatchExtractionConfiguration(
+  env: Record<string, string | undefined> = process.env,
+): LatchExtractionConfiguration {
+  const selectedProvider = (
+    env.MODEL_PROVIDER || (hasKey(env.OPENROUTER_API_KEY) ? "openrouter" : "openai")
   )
-    throw new LatchExtractionConfigurationError();
+    .trim()
+    .toLowerCase();
+
+  if (selectedProvider === "openrouter") {
+    if (!hasKey(env.OPENROUTER_API_KEY)) {
+      throw new LatchExtractionConfigurationError(
+        "Set OPENROUTER_API_KEY in the root .env file, then restart the web app.",
+      );
+    }
+    return {
+      model: (env.LATCH_EXTRACTION_MODEL || env.MODEL || "openrouter/free").trim(),
+      modelProvider: new OpenAIProvider({
+        apiKey: env.OPENROUTER_API_KEY,
+        baseURL: "https://openrouter.ai/api/v1",
+        useResponses: false,
+      }),
+      provider: "openrouter",
+      // OpenAI tracing is a separate paid service and is not needed for this
+      // OpenRouter-backed extraction run.
+      tracingDisabled: true,
+    };
+  }
+
+  if (selectedProvider !== "openai") {
+    throw new LatchExtractionConfigurationError(
+      "LATCH extraction supports MODEL_PROVIDER=openrouter or openai.",
+    );
+  }
+  if (!hasKey(env.OPENAI_API_KEY)) {
+    throw new LatchExtractionConfigurationError(
+      "Set OPENAI_API_KEY in the root .env file, or choose MODEL_PROVIDER=openrouter.",
+    );
+  }
+  return {
+    model: (env.LATCH_EXTRACTION_MODEL || "gpt-4o-mini").trim(),
+    provider: "openai",
+    tracingDisabled: false,
+  };
+}
+
+export async function runLatchExtractionAgent(thread: LatchThread) {
+  const configuration = resolveLatchExtractionConfiguration();
 
   const agent = new Agent({
     name: "LATCH commitment extractor",
-    model: process.env.LATCH_EXTRACTION_MODEL || "gpt-4o-mini",
+    model: configuration.model,
     instructions: latchExtractionInstructions,
     outputType: latchExtractionSchema,
   });
-  const result = await run(
+  const runner = new Runner({
+    ...(configuration.modelProvider
+      ? { modelProvider: configuration.modelProvider }
+      : {}),
+    tracingDisabled: configuration.tracingDisabled,
+  });
+  const result = await runner.run(
     agent,
     JSON.stringify({
       context: {
@@ -41,7 +100,10 @@ export async function runLatchExtractionAgent(thread: LatchThread) {
       },
       quotedConversationData: thread.messages,
     }),
-    { maxTurns: 2, signal: AbortSignal.timeout(25_000) },
+    {
+      maxTurns: 2,
+      signal: AbortSignal.timeout(25_000),
+    },
   );
   if (!result.finalOutput) throw new Error("The extraction agent returned no output.");
   return result.finalOutput;
