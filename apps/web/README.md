@@ -1,3 +1,18 @@
+# Current LATCH status — 2026-09-13
+
+The user expanded the assignment to all roles. Extraction, the workspace UI/graph, and the LATCH browser approval/persistence adaptation are implemented on feature/latch-extraction. Earlier role assignments below are historical. Read CONTINUE_HERE.md for the current continuation instructions and DEMO_SCRIPT.md for rehearsal.
+
+Latest offline verification: npm.cmd run verify passed 68 web tests and workspace typechecks; npm.cmd run typecheck passed. The inherited Windows agent-core/channel glob issue remains; previous explicit runs passed 37 and 22 tests. Production build status is recorded in EXTRACTION_REPORT.md.
+
+Current UI files: page.tsx, globals.css, layout.tsx, providers.tsx, app-control.tsx, commitment-card.tsx, commitment-graph.tsx, latch-review.tsx, latch-saved.tsx. Approval files: latch-approval.ts, latch-task-client.ts, use-latch-workplace.ts, server/latch-approval-domain.ts, server/latch-approval-http.ts, server/latch-approvals.ts, api/latch/tasks/route.ts. New tests cover service, HTTP and graph rendering. The generic followup-client factory now accepts an optional endpoint; its existing default stays unchanged.
+
+API additions: GET /api/latch/config returns only chatConfigured. GET /api/latch/tasks?session=1 establishes the HttpOnly approval session; GET with threadId lists real records and optional taskId retrieves one. POST operation=propose accepts thread, extraction, commitmentId and reviewed {title,owner,dueText,dueAt}; returns an immutable proposal. POST approve or deny accepts only proposalId plus operation. Only browser approval can write; proposal creation and chat tools cannot. Keep the full thread/extraction snapshot when opening review and invalidate it after revision changes. Saved records remain separate from extraction state.
+
+Browser checked at 1366x768: all five sample messages, missing-credential extraction error, revision increment after deadline edit, and honest unsaved/provider setup states. Graph direction and no-deadline labels are covered by rendered component tests. Live populated graph screenshots and full keyboard approval checks remain pending real extraction.
+
+Credentials intentionally deferred by user. Real inference, changed-deadline inference, live CopilotKit chat, and actual Ambiguous approve/read-back/decline have NOT been verified. No external record was created. Do not present offline test fixtures as live results.
+
+---
 # An agent inside your web app
 
 **OpenAI + CopilotKit React + Ambiguous AI**

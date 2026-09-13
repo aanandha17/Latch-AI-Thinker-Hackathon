@@ -1,11 +1,11 @@
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
 /** All page reads and tools share one cookie handshake, including React's development effect replay. */
-export function createFollowupClient(fetcher: Fetcher) {
+export function createFollowupClient(fetcher: Fetcher, endpoint = "/api/followups") {
   let session: Promise<void> | undefined;
   const initialize = () =>
     (session ??= (async () => {
-      const response = await fetcher("/api/followups?session=1", {
+      const response = await fetcher(`${endpoint}?session=1`, {
         cache: "no-store",
       });
       if (!response.ok)
@@ -20,7 +20,7 @@ export function createFollowupClient(fetcher: Fetcher) {
   return async function request<T>(path: string, body?: unknown): Promise<T> {
     await initialize();
     const response = await fetcher(
-      `/api/followups${path}`,
+      `${endpoint}${path}`,
       body
         ? {
             method: "POST",

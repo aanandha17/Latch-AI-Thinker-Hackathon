@@ -1,8 +1,8 @@
-# LATCH - extraction integration branch
+# LATCH — conversation to approved work
 
 This branch adds LATCH commitment extraction to the official starter below. Read [TEAM_HANDOFF.md](TEAM_HANDOFF.md) for setup, API contracts and team ownership, [EXTRACTION_REPORT.md](EXTRACTION_REPORT.md) for actual verification results, and [TEAM_FRONTEND_PROMPT.md](TEAM_FRONTEND_PROMPT.md) for the next member's assignment.
 
-From the repository root: `npm.cmd ci`, copy `.env.example` to `.env`, configure your local OpenAI key/model, then `npm.cmd run dev:web`. Open http://127.0.0.1:3100. The minimal LATCH page extracts proposals; the graph and LATCH persistence adaptation are next-member work. The inherited incident approval reference is at `/starter`. Live model verification is pending local credentials; do not treat offline fixture tests as live results.
+From the repository root: `npm.cmd ci`, copy `.env.example` to `.env`, configure your local OpenAI key/model, then `npm.cmd run dev:web`. Open http://127.0.0.1:3100. The LATCH page includes extraction, a commitment graph, evidence review, and browser-approved Ambiguous persistence. Read CONTINUE_HERE.md for the current full-scope handoff. Live extraction and saving remain pending credentials. The inherited incident approval reference is at `/starter`. Live model verification is pending local credentials; do not treat offline fixture tests as live results.
 
 ---
 <div align="center">
