@@ -9,6 +9,10 @@ function canonicalProvider(provider: string) {
 
 export function resolveModel() {
   const model = (process.env.MODEL || DEFAULT_MODEL).trim();
+  if ((process.env.MODEL_PROVIDER || "").trim().toLowerCase() === "ollama") {
+    if (!model) throw new Error("MODEL must include a non-empty model identifier.");
+    return createOpenAI({ baseURL: "http://127.0.0.1:11434/v1", apiKey: "ollama" }).chat(model);
+  }
   const firstSeparator = model.search(/[:/]/);
   const candidatePrefix = firstSeparator >= 0 ? canonicalProvider(model.slice(0, firstSeparator)) : undefined;
   // A colon in a bare model name can introduce a variant, such as ':free'.

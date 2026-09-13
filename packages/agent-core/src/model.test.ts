@@ -116,3 +116,11 @@ for (const provider of ["openai", "openrouter"] as const) {
     });
   }
 }
+
+test("Ollama uses a local chat model without cloud credentials and preserves model tags", () => {
+  withEnv({ MODEL_PROVIDER: "ollama", MODEL: "qwen2.5:7b" }, () => {
+    const model = resolveModel();
+    assert.notEqual(typeof model, "string");
+    if (typeof model !== "string") assert.equal(model.modelId, "qwen2.5:7b");
+  });
+});

@@ -1,5 +1,5 @@
 import "server-only";
-import { Agent, run, setDefaultOpenAIKey, setTracingDisabled } from "@openai/agents";
+import { Agent, run, OpenAIProvider, setTracingDisabled } from "@openai/agents";
 import { extractionSchema, type LatchThread } from "../latch-schema";
 import { extractThread as extractCore, ExtractionError, type ModelRunner } from "./latch-extract-core";
 export const extractionInstructions = `You analyze a selected team conversation for human review.
@@ -20,11 +20,14 @@ Return exactly the provided threadId and revision. Empty conversations produce e
 const runModel: ModelRunner = async (thread, signal) => {
   const key = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.MODEL?.trim();
-  if (!key || key === "stub-replace-me" || !model) throw new ExtractionError("UNCONFIGURED", "Configure MODEL and OPENAI_API_KEY in root .env, then restart the app.");
-  setDefaultOpenAIKey(key);
+  const local = process.env.MODEL_PROVIDER?.trim().toLowerCase() === "ollama";
+  if (!model || (!local && (!key || key === "stub-replace-me"))) throw new ExtractionError("UNCONFIGURED", "Configure MODEL and OPENAI_API_KEY in root .env, then restart the app.");
+  const provider = new OpenAIProvider(local
+    ? { baseURL: "http://127.0.0.1:11434/v1", apiKey: "ollama", useResponses: false }
+    : { apiKey: key });
   setTracingDisabled(true);
   const agent = new Agent({
-    name: "LATCH extractor", model, instructions: extractionInstructions,
+    name: "LATCH extractor", model: await provider.getModel(model), instructions: extractionInstructions,
     outputType: extractionSchema, tools: [], handoffs: [], mcpServers: [],
   });
   const result = await run(agent, JSON.stringify({ quotedConversation: thread }), { signal, maxTurns: 1 });
